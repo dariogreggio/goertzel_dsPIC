@@ -1,0 +1,82 @@
+      asm volatile ("mov #_readPointer,w0" : : : "w0","w1","w2","w3","w4","w5","w6","w7","w8","w9","w10","w11","w12","w13");
+    // per clobbering registers https://www.eevblog.com/forum/microcontrollers/inserting-some-assembly-inside-c-code-for-pic24fj-series/
+      asm volatile ("mov [w0],w8");       // W8 = p
+      asm volatile ("mov #_win,w10");     // W10 = pw
+      asm volatile ("movsac A,[w8]+=2,w4,[w10]+=2,w5"); // W4 = *p, W5 = *pw
+      
+      asm volatile ("do #127,.myenddo");
+      asm volatile ("mpy w4*w5,B,[w8]+=2,w4,[w10]+=2,w5");
+      
+      asm volatile ("mov #_c,w9");      // W9 = &c
+      // USARE cw e shiftare al volo??
+      
+      asm volatile ("mov #_z1,w11");      // W11 = &z1
+      asm volatile ("mov #_z2,w12");      // W12 = &z2
+      
+      asm volatile ("movsac A,[w9]+=2,w6,[w11],w7"); // W6 = c[i], W7 = sw[i]
+//      non va! ah perché w11 è accettato solo in ymemory e lo prende così...
+      
+      asm volatile ("do #2,.myendfor");   //MAX_SLOTS
+      asm volatile ("clr A");
+      asm volatile ("ADD A");
+      asm volatile ("mac w6*w7,A,[w9]+=2,w6");
+      asm volatile ("sac A,#-5,w0");      // W0=z0
+      asm volatile ("sub w0,[w12],w0");
+      asm volatile ("mov [w11],[w12++]");    //z2[i] = z1[i];
+      asm volatile ("mov w0,[w11++]");       //z1[i] = z0;
+      asm volatile ("mov [w11],w7");
+      asm volatile (".myendfor: nop");
+     
+      asm volatile ("mov #_opBuffWindow+160*2,w0");
+      asm volatile ("cp w8,w0");
+      asm volatile ("BRA NZ, skip1");
+      asm volatile ("mov #_opBuffWindow,w8");     // W8 = p
+      asm volatile ("movsac A,[w8]+=2,w4");          // W4 = *p
+      asm volatile ("skip1:");
+      
+      asm volatile (".myenddo: nop");
+      
+      asm volatile ("mov #_readPointer,w1");
+      asm volatile ("mov [w1],w0");
+      asm volatile ("add #32*2,w0");    //SUB_BLOCK_LENGTH
+      asm volatile ("mov #_opBuffWindow+160*2,w2");
+      asm volatile ("cp w0,w2");    // CP literal accetta max 32...
+      asm volatile ("BRA NZ, skip2");
+      asm volatile ("mov #_opBuffWindow,w0");
+      asm volatile ("mov w0,[w1]");
+      asm volatile ("BRA skip2_");
+      asm volatile ("skip2:");
+      asm volatile ("mov w0,[w1]");
+      asm volatile ("skip2_:");
+      
+      asm volatile ("mov #_cw,w8");         // W8 = &cw
+      asm volatile ("mov #_sw,w9");         // W9 = &sw
+      asm volatile ("mov #_z1,w10");        // W10 = &z1
+      asm volatile ("mov #_z2,w11");        // W11 = &z2
+      asm volatile ("mov #_I,w12");         // W12 = &I
+      asm volatile ("mov #_Q,w13");         // W13 = &Q
+      asm volatile ("mov #_fftData,w7");    // W7 = &fftData
+      asm volatile ("movsac A,[w8]+=2,w4,[w10]+=2,w6");  // W4 = cw[i],W6 = z1[i]
+      asm volatile ("mov [w9++],w5");         // W5 = sw[i]
+      
+      asm volatile ("do #2,.myendfor2");    //MAX_SLOTS
+      asm volatile ("mpy w4*w6,A,[w8]+=2,w4");
+      asm volatile ("lac [w11++],#5,B");    // z2[i]
+      asm volatile ("SUB A");            // forse usare MSC e LAC.. no, può solo sottrarre da acc...
+      asm volatile ("sac A,#-5,w0");     // W12=I[i]
+      asm volatile ("mpy w5*w6,B,[w9]+=2,w5,[w10]+=2,w6");
+      asm volatile ("sac B,#-5,w1");     // W13=Q[i]
+//				CORCONbits.US=0b01;			// unsigned multiply, SERVE QUA?? e poi risistemare per sopra
+      
+      // DEVO mettere w12 e 13 in 4 e 5 per la mpy... però così poi devo ricaricarli e perdo il postinc di sopra
+      asm volatile ("exch w4,w0");
+      asm volatile ("exch w5,w1");
+      
+      asm volatile ("mpy w4*w4,A");
+      asm volatile ("mac w5*w5,A");
+      asm volatile ("sac A,#1,[w7++]");     // W1=fftData[i]
+      asm volatile ("exch w4,w0");
+      asm volatile ("exch w5,w1");
+      asm volatile ("mov w0,[w12++]");
+      asm volatile ("mov w1,[w13++]");
+      asm volatile (".myendfor2: nop");
